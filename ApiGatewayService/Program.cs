@@ -63,6 +63,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddScoped<IAuthProxyService, AuthProxyService>();
 builder.Services.AddEndpointsApiExplorer();
 var app = builder.Build();
 
