@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  # 1. Nuestro "cerebro" .NET (el ApiGatewayService)
+  apigateway-service:
+    build:
+      context: ./ApiGatewayService # Busca el Dockerfile en esta carpeta
+    container_name: censudex-apigateway-net
+    # No exponemos puertos al exterior, solo a NGINX
+
+  # 2. El Balanceador de Carga NGINX
+  nginx-loadbalancer:
+    image: nginx:latest
+    container_name: censudex-nginx
+    ports:
+      - "80:80" # Expone el puerto 80 de NGINX al puerto 80 de tu PC
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf # Monta nuestro archivo .conf
+    depends_on:
+      - apigateway-service # NGINX no iniciará hasta que el servicio .NET esté listo
