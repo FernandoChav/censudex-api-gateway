@@ -31,10 +31,10 @@ namespace ApiGatewayService.Services.Implementation
         {
             var request = new GetAllClientsRequest
             {
-                FilterStatus = status ?? null,
-                FilterName = name ?? null,
-                FilterEmail = email ?? null,
-                FilterUsername = username ?? null
+                FilterStatus = status ?? "",
+                FilterName = name ?? "",
+                FilterEmail = email ?? "",
+                FilterUsername = username ?? ""
             };
             var response = await _gRpcClient.GetAllClientsAsync(request);
             return response.Clients;

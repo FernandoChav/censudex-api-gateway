@@ -1,6 +1,4 @@
-version: '3.8'
 
-# 1. Definimos una red "privada" para que nuestros contenedores hablen
 networks:
   censudex-net:
     driver: bridge
@@ -8,20 +6,25 @@ networks:
 services:
   # --- BASES DE DATOS ---
 
-  # 2. Base de Datos de Clientes (PostgreSQL)
   postgres-db:
     image: postgres:latest
     container_name: censudex-postgres
     environment:
-      - POSTGRES_PASSWORD=tu_password 
+      - POSTGRES_PASSWORD=tu_password
       - POSTGRES_USER=postgres
       - POSTGRES_DB=censudex_clients
     ports:
-      - "5432:5432" #
+      - "5432:5432"
     networks:
       - censudex-net
 
-  # 3. Base de Datos de Blacklist (Redis)
+    healthcheck:
+    
+      test: ["CMD-SHELL", "pg_isready -U postgres -d censudex_clients"]
+      interval: 5s  
+      timeout: 5s   
+      retries: 5    
+
   redis-db:
     image: redis:latest
     container_name: censudex-redis
@@ -29,66 +32,77 @@ services:
       - "6379:6379"
     networks:
       - censudex-net
+   
+    healthcheck:
+     
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # --- MICROSERVICIOS DE LÓGICA ---
 
-  # 4. Servicio de Clientes (gRPC)
   clients-service:
     container_name: censudex-clients-service
     build:
-      context: ../censudex-clients-service/ClientsService # Ruta al Dockerfile de Clients
+      context: ../censudex-clients-service/ClientsService
     environment:
       - ConnectionStrings__DefaultConnection=Host=postgres-db;Port=5432;Database=censudex_clients;Username=postgres;Password=tu_password
-      - ASPNETCORE_URLS=http://+:8080 
-    networks:
-      - censudex-net
-    depends_on:
-      - postgres-db 
-
-  # 5. Servicio de Autenticación (HTTP)
-  auth-service:
-    container_name: censudex-auth-service
-    build:
-      context: ../censudex-auth-service/AuthService # Ruta al Dockerfile de Auth
-    environment:
-      # --- ¡SOBRESCRITURA! ---
-      # Le dice al Auth que busque Redis y Clients en sus contenedores
-      - Redis__ConnectionString=redis-db:6379
-      - ServiceUrls__ClientsService=http://clients-service:8080
       - ASPNETCORE_URLS=http://+:8080
     networks:
       - censudex-net
+  
     depends_on:
-      - clients-service
-      - redis-db
+      postgres-db:
+        condition: service_healthy
+
+  auth-service:
+    container_name: censudex-auth-service
+    build:
+      context: ../censudex-auth-service/AuthService
+    environment:
+      - Redis__ConnectionString=redis-db:6379
+      - ServiceUrls__ClientsService=http://clients-service:8080
+      - ASPNETCORE_URLS=http://+:8080
+      - Jwt__Key=ESTE_ES_UN_SECRETO_MUY_LARGO_Y_SEGURO_QUE_DEBES_CAMBIAR
+      - Jwt__Issuer=censudex-auth-service
+      - Jwt__Audience=censudex-microservices
+    networks:
+      - censudex-net
+
+    depends_on:
+      clients-service:
+        condition: service_started 
+      redis-db:
+        condition: service_healthy
 
   # --- API GATEWAY ---
 
-  # 6. Gateway Lógica (.NET)
   apigateway-service:
     container_name: censudex-apigateway-net
     build:
-      context: ./ApiGatewayService # Ruta al Dockerfile de este repo
+      context: ./ApiGatewayService
     environment:
-      # --- ¡SOBRESCRITURA! ---
-      # Le dice a la Gateway dónde están los otros servicios
       - ServiceUrls__ClientsService=http://clients-service:8080
       - ServiceUrls__AuthService=http://auth-service:8080
       - ASPNETCORE_URLS=http://+:8080
     networks:
       - censudex-net
+  
     depends_on:
-      - auth-service
+      auth-service:
+        condition: service_started 
 
-  # 7. Gateway Externa (NGINX) - El Balanceador de Carga
   nginx-loadbalancer:
     image: nginx:latest
     container_name: censudex-nginx
     ports:
-      - "80:80" # ¡El único puerto expuesto al mundo!
+      - "80:80"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf # Monta nuestro archivo de config
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     networks:
       - censudex-net
+
     depends_on:
-      - apigateway-service # No inicies hasta que la lógica .NET esté lista
+      apigateway-service:
+        condition: service_started 
