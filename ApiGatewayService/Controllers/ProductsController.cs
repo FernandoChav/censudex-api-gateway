@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
+
 
 namespace ApiGatewayService.Controllers
 {
@@ -18,6 +20,7 @@ namespace ApiGatewayService.Controllers
         }
 
         private HttpClient Client() => _httpFactory.CreateClient("ProductsService");
+        private HttpClient InventoryClient() => _httpFactory.CreateClient("InventoryService");
 
         [HttpGet]
         public async Task<IActionResult> GetAll()
@@ -71,6 +74,22 @@ namespace ApiGatewayService.Controllers
             var client = Client();
             var response = await client.PostAsync("/products", multipart);
             var body = await response.Content.ReadAsStringAsync();
+
+
+            // Agregar producto a inventario con stock 0
+            if (response.IsSuccessStatusCode)
+            {
+                var json = JsonDocument.Parse(body);
+                Guid id = Guid.Parse(json.RootElement.GetProperty("id").GetString());
+
+                var inventoryClient = InventoryClient();
+                var inventoryResp = await inventoryClient.PostAsync($"/api/Supabase/add",
+                    new StringContent(JsonSerializer.Serialize(new { productid = id, stock = 0 }),
+                    System.Text.Encoding.UTF8, "application/json"));
+
+            }
+
+
             return StatusCode((int)response.StatusCode, body);
         }
 

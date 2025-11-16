@@ -9,6 +9,10 @@ builder.Services.AddHttpClient("ProductsService", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["ProductsService:BaseUrl"] ?? "http://localhost:3001");
 });
+builder.Services.AddHttpClient("InventoryService", client => 
+{
+    client.BaseAddress = new Uri(builder.Configuration["InventoryService:BaseUrl"] ?? "http://localhost:5233");
+});
 
 
 var app = builder.Build();
