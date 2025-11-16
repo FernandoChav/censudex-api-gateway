@@ -1,20 +1,94 @@
 version: '3.8'
 
-services:
-  # 1. Nuestro "cerebro" .NET (el ApiGatewayService)
-  apigateway-service:
-    build:
-      context: ./ApiGatewayService # Busca el Dockerfile en esta carpeta
-    container_name: censudex-apigateway-net
-    # No exponemos puertos al exterior, solo a NGINX
+# 1. Definimos una red "privada" para que nuestros contenedores hablen
+networks:
+  censudex-net:
+    driver: bridge
 
-  # 2. El Balanceador de Carga NGINX
+services:
+  # --- BASES DE DATOS ---
+
+  # 2. Base de Datos de Clientes (PostgreSQL)
+  postgres-db:
+    image: postgres:latest
+    container_name: censudex-postgres
+    environment:
+      - POSTGRES_PASSWORD=tu_password 
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=censudex_clients
+    ports:
+      - "5432:5432" #
+    networks:
+      - censudex-net
+
+  # 3. Base de Datos de Blacklist (Redis)
+  redis-db:
+    image: redis:latest
+    container_name: censudex-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - censudex-net
+
+  # --- MICROSERVICIOS DE LÓGICA ---
+
+  # 4. Servicio de Clientes (gRPC)
+  clients-service:
+    container_name: censudex-clients-service
+    build:
+      context: ../censudex-clients-service/ClientsService # Ruta al Dockerfile de Clients
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres-db;Port=5432;Database=censudex_clients;Username=postgres;Password=tu_password
+      - ASPNETCORE_URLS=http://+:8080 
+    networks:
+      - censudex-net
+    depends_on:
+      - postgres-db 
+
+  # 5. Servicio de Autenticación (HTTP)
+  auth-service:
+    container_name: censudex-auth-service
+    build:
+      context: ../censudex-auth-service/AuthService # Ruta al Dockerfile de Auth
+    environment:
+      # --- ¡SOBRESCRITURA! ---
+      # Le dice al Auth que busque Redis y Clients en sus contenedores
+      - Redis__ConnectionString=redis-db:6379
+      - ServiceUrls__ClientsService=http://clients-service:8080
+      - ASPNETCORE_URLS=http://+:8080
+    networks:
+      - censudex-net
+    depends_on:
+      - clients-service
+      - redis-db
+
+  # --- API GATEWAY ---
+
+  # 6. Gateway Lógica (.NET)
+  apigateway-service:
+    container_name: censudex-apigateway-net
+    build:
+      context: ./ApiGatewayService # Ruta al Dockerfile de este repo
+    environment:
+      # --- ¡SOBRESCRITURA! ---
+      # Le dice a la Gateway dónde están los otros servicios
+      - ServiceUrls__ClientsService=http://clients-service:8080
+      - ServiceUrls__AuthService=http://auth-service:8080
+      - ASPNETCORE_URLS=http://+:8080
+    networks:
+      - censudex-net
+    depends_on:
+      - auth-service
+
+  # 7. Gateway Externa (NGINX) - El Balanceador de Carga
   nginx-loadbalancer:
     image: nginx:latest
     container_name: censudex-nginx
     ports:
-      - "80:80" # Expone el puerto 80 de NGINX al puerto 80 de tu PC
+      - "80:80" # ¡El único puerto expuesto al mundo!
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf # Monta nuestro archivo .conf
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf # Monta nuestro archivo de config
+    networks:
+      - censudex-net
     depends_on:
-      - apigateway-service # NGINX no iniciará hasta que el servicio .NET esté listo
+      - apigateway-service # No inicies hasta que la lógica .NET esté lista
