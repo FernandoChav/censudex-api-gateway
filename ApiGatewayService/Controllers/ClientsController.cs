@@ -1,14 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using ApiGatewayService.Dtos.Clients;
 using ApiGatewayService.Services.Interfaces;
-using Clients;
 using Microsoft.AspNetCore.Mvc;
-
+using Microsoft.AspNetCore.Authorization;
 namespace ApiGatewayService.Controllers
-{
+{   
+    [ApiController]
+    [Authorize]
     public class ClientsController(IClientService clientService) : BaseController
     {
         private readonly IClientService _clientService = clientService;

@@ -5,6 +5,7 @@ using ApiGatewayService.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer; 
 using Microsoft.IdentityModel.Tokens; 
 using System.IdentityModel.Tokens.Jwt;
+using ApiGatewayService.Middleware;
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -72,7 +73,7 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.UseMiddleware<JwtAuthorizationMiddleware>();
 app.MapControllers();
 
 app.Run();
