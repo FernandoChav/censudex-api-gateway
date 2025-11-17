@@ -23,7 +23,7 @@ namespace ApiGatewayService.Services.Implementation
 
         public async Task<DeleteClientResponse> DeleteClientAsync(string clientId)
         {
-            var request = _mapper.Map<DeleteClientRequest>(clientId);
+            var request = new DeleteClientRequest { Id = clientId };
             return await _gRpcClient.DeleteClientAsync(request);
         }
 
@@ -48,7 +48,7 @@ namespace ApiGatewayService.Services.Implementation
 
         public async Task<ClientResponse> UpdateClientAsync(string clientId, UpdateClientDto dto)
         {
-            var request = _mapper.Map<UpdateClientRequest>((clientId, dto));
+            var request = _mapper.Map<UpdateClientRequest>(dto);
             request.Id = clientId;
             return await _gRpcClient.UpdateClientAsync(request);
         }
