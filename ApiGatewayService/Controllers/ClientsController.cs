@@ -29,6 +29,13 @@ namespace ApiGatewayService.Controllers
             var response = await _clientService.GetAllClientsAsync(filter_status, filter_name, filter_email, filter_username);
             return Ok(response);
         }
+        [HttpPatch("{id}")]
+        public async Task<IActionResult> UpdateClient(string id, [FromBody] UpdateClientDto request)
+        {
+            // Tu ClientService ya tiene el método UpdateClientAsync listo, solo faltaba exponerlo aquí
+            var response = await _clientService.UpdateClientAsync(id, request);
+            return Ok(response);
+        }
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteClient(string id)
         {
