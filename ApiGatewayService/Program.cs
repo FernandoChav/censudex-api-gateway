@@ -6,28 +6,42 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using ApiGatewayService.Middleware;
+using Censudex_orders.Protos; // <-- FUSIONADO
 
 var builder = WebApplication.CreateBuilder(args);
 
-// FUSIÓN: Mantenemos TU AddControllers (de HEAD) porque es más específico y tiene el filtro.
+
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<GrpcExceptionFilter>();
 });
 
-builder.Services.AddOpenApi(); // De main
 
-builder.Services.AddHttpClient("ProductsService", client => // De main
+builder.Services.AddOpenApi();
+builder.Services.AddHttpClient("ProductsService", client => 
 {
     client.BaseAddress = new Uri(builder.Configuration["ProductsService:BaseUrl"] ?? "http://localhost:3001");
 });
-builder.Services.AddHttpClient("InventoryService", client => // De main
+builder.Services.AddHttpClient("InventoryService", client => 
 {
     client.BaseAddress = new Uri(builder.Configuration["InventoryService:BaseUrl"] ?? "http://localhost:5233");
 });
+builder.Services.AddGrpcClient<OrderService.OrderServiceClient>(options =>
+{
+    var orderServiceUrl = builder.Configuration["OrderService:BaseUrl"] ?? "http://localhost:5001";
+    options.Address = new Uri(orderServiceUrl);
+})
+.ConfigurePrimaryHttpMessageHandler(() =>
+{
+    var handler = new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = 
+            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+    };
+    return handler;
+});
 
 
-// FUSIÓN: Mantenemos todos TUS servicios (de HEAD)
 builder.Services.AddAutoMapper(Assembly.GetExecutingAssembly());
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -78,10 +92,8 @@ builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();
 
-
-// FUSIÓN: Mantenemos TU pipeline de middleware (de HEAD)
+// Pipeline (Este estaba bien)
 app.UseHttpsRedirection();
-
 app.UseMiddleware<JwtAuthorizationMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
