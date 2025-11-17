@@ -6,23 +6,34 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using ApiGatewayService.Middleware;
+
 var builder = WebApplication.CreateBuilder(args);
 
-
-
+// FUSIÓN: Mantenemos TU AddControllers (de HEAD) porque es más específico y tiene el filtro.
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<GrpcExceptionFilter>();
 });
+
+builder.Services.AddOpenApi(); // De main
+
+builder.Services.AddHttpClient("ProductsService", client => // De main
+{
+    client.BaseAddress = new Uri(builder.Configuration["ProductsService:BaseUrl"] ?? "http://localhost:3001");
+});
+builder.Services.AddHttpClient("InventoryService", client => // De main
+{
+    client.BaseAddress = new Uri(builder.Configuration["InventoryService:BaseUrl"] ?? "http://localhost:5233");
+});
+
+
+// FUSIÓN: Mantenemos todos TUS servicios (de HEAD)
 builder.Services.AddAutoMapper(Assembly.GetExecutingAssembly());
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        // Dejamos esto vacío a propósito.
-        // Tu JwtAuthorizationMiddleware y tu AuthProxyService
-        // se encargan de la validación real.
-        // Esto solo evita la excepción.
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = false,
@@ -34,7 +45,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddGrpcClient<Clients.Clients.ClientsClient>(o =>
 {
-
     var url = builder.Configuration.GetValue<string>("ServiceUrls:ClientsService");
     o.Address = new Uri(url!);
 })
@@ -47,6 +57,7 @@ builder.Services.AddGrpcClient<Clients.Clients.ClientsClient>(o =>
     };
     return handler;
 });
+
 builder.Services.AddHttpClient("AuthServiceClient", client =>
 {
     var url = builder.Configuration["ServiceUrls:AuthService"];
@@ -59,13 +70,16 @@ builder.Services.AddHttpClient("AuthServiceClient", client =>
         HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
     return handler;
 });
+
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IAuthProxyService, AuthProxyService>();
 builder.Services.AddEndpointsApiExplorer();
+
 var app = builder.Build();
 
 
+// FUSIÓN: Mantenemos TU pipeline de middleware (de HEAD)
 app.UseHttpsRedirection();
 
 app.UseMiddleware<JwtAuthorizationMiddleware>();
