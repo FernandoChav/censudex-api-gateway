@@ -11,6 +11,7 @@ namespace ApiGatewayService.Controllers
         private readonly IClientService _clientService = clientService;
 
         [HttpPost("create")]
+        [AllowAnonymous]
         public async Task<IActionResult> CreateClient([FromBody] CreateClientDto request)
         {
             var response = await _clientService.CreateClientAsync(request);

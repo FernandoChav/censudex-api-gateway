@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ApiGatewayService.Services.Implementation
 {
-    public class AuthProxyService(IHttpClientFactory httpClientFactory, ILogger<AuthProxyService> logger): ControllerBase, IAuthProxyService
+    public class AuthProxyService(IHttpClientFactory httpClientFactory, ILogger<AuthProxyService> logger) : ControllerBase, IAuthProxyService
     {
         private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
         private readonly ILogger<AuthProxyService> _logger = logger;
@@ -19,7 +19,7 @@ namespace ApiGatewayService.Services.Implementation
             var client = _httpClientFactory.CreateClient("AuthServiceClient");
             _logger.LogInformation("Forwarding /login request to AuthService");
 
-            var response = await client.PostAsJsonAsync("/login", body);
+            var response = await client.PostAsJsonAsync("/auth/login", body);
             return await CreateProxyResponse(response);
         }
 
@@ -34,7 +34,7 @@ namespace ApiGatewayService.Services.Implementation
             }
 
             _logger.LogInformation("Forwarding /logout request to AuthService");
-            var response = await client.PostAsync("/logout", null);
+            var response = await client.PostAsync("/auth/logout", null);
             return await CreateProxyResponse(response);
         }
 
@@ -49,19 +49,30 @@ namespace ApiGatewayService.Services.Implementation
             }
 
             _logger.LogInformation("Forwarding /validate-token request to AuthService");
-            var response = await client.GetAsync("/validate-token");
+            var response = await client.GetAsync("/auth/validate-token");
             return await CreateProxyResponse(response);
         }
 
         // El método de ayuda ahora vive aquí, en el servicio
         private async Task<IActionResult> CreateProxyResponse(HttpResponseMessage response)
         {
-            var content = await response.Content.ReadFromJsonAsync<object>();
+            // Primero, revisa si la respuesta NO fue exitosa
             if (!response.IsSuccessStatusCode)
             {
-                return StatusCode((int)response.StatusCode, content);
+                // Lee el cuerpo como texto plano (string), por si viene vacío
+                var errorContent = await response.Content.ReadAsStringAsync();
+
+                // Si el cuerpo del error estaba vacío, crea un mensaje genérico
+                object errorBody = string.IsNullOrEmpty(errorContent)
+                    ? new { message = (string?)response.ReasonPhrase } // ej: "Not Found"
+                    : new { message = (string?)errorContent }; // o usa el mensaje de error
+
+                return StatusCode((int)response.StatusCode, errorBody);
             }
-            return Ok(content);
+
+            // Si SÍ fue exitosa (2xx), entonces es seguro leerlo como JSON
+            var successContent = await response.Content.ReadFromJsonAsync<object>();
+            return Ok(successContent);
         }
     }
 }
