@@ -42,7 +42,7 @@ namespace ApiGatewayService.Services.Implementation
 
         public async Task<ClientResponse> GetClientByIdAsync(string clientId)
         {
-            var request = _mapper.Map<GetClientByIdRequest>(clientId);
+            var request = new GetClientByIdRequest { Id = clientId };
             return await _gRpcClient.GetClientByIdAsync(request);
         }
 
