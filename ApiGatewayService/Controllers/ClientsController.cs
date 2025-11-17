@@ -18,9 +18,9 @@ namespace ApiGatewayService.Controllers
             return Ok(response);
         }
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetClient(string clientId)
+        public async Task<IActionResult> GetClient(string id)
         {
-            var response = await _clientService.GetClientByIdAsync(clientId);
+            var response = await _clientService.GetClientByIdAsync(id);
             return Ok(response);
         }
         [HttpGet]
