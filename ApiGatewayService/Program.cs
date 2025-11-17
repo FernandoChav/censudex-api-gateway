@@ -1,3 +1,4 @@
+using Censudex_orders.Protos;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -13,6 +14,21 @@ builder.Services.AddHttpClient("InventoryService", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["InventoryService:BaseUrl"] ?? "http://localhost:5233");
 });
+builder.Services.AddGrpcClient<OrderService.OrderServiceClient>(options =>
+{
+    var orderServiceUrl = builder.Configuration["OrderService:BaseUrl"] ?? "http://localhost:5001";
+    options.Address = new Uri(orderServiceUrl);
+})
+.ConfigurePrimaryHttpMessageHandler(() =>
+{
+    var handler = new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = 
+            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+    };
+    return handler;
+});
+
 
 
 var app = builder.Build();
