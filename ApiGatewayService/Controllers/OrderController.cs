@@ -4,6 +4,7 @@ using Grpc.Core;
 // IMPORTANTE: Usar alias para evitar conflictos de nombres
 using OrderServiceProtos = global::Censudex_orders.Protos;
 using GrpcStatusCode = Grpc.Core.StatusCode;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ApiGatewayService.Controllers
 {
@@ -200,6 +201,7 @@ namespace ApiGatewayService.Controllers
         /// PUT /api/orders/{id}/status - Actualizar el estado de un pedido
         /// </summary>
         [HttpPut("{id}/status")]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
