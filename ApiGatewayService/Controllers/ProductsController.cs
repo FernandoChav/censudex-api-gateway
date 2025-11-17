@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
 
 
 namespace ApiGatewayService.Controllers
@@ -41,6 +42,7 @@ namespace ApiGatewayService.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         [DisableRequestSizeLimit]
         public async Task<IActionResult> Create()
         {
@@ -94,6 +96,7 @@ namespace ApiGatewayService.Controllers
         }
 
         [HttpPatch("{id}")]
+        [Authorize]
         [DisableRequestSizeLimit]
         public async Task<IActionResult> Patch(string id)
         {
@@ -145,6 +148,7 @@ namespace ApiGatewayService.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> Delete(string id)
         {
             var client = Client();

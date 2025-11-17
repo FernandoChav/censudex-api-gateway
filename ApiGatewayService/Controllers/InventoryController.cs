@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Net;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ApiGatewayService.Controllers
 {
@@ -27,6 +28,7 @@ namespace ApiGatewayService.Controllers
         private HttpClient ProductsClient() => _httpFactory.CreateClient("ProductsService");
 
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> GetAll()
         {
             // --- INVENTORY SERVICE ---
